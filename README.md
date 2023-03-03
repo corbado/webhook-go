@@ -1,7 +1,5 @@
 [![Go Geference](https://pkg.go.dev/badge/github.com/corbado/webhook-go.svg)](https://pkg.go.dev/github.com/corbado/webhook-go)
 [![Build Status](https://github.com/corbado/webhook-go/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/corbado/webhook-go/actions/workflows/build.yml?query=branch%3Amain)
-[![Coverage Status](https://coveralls.io/repos/github/corbado/webhook-go/badge.svg?branch=main)](https://coveralls.io/github/corbado/webhook-go?branch=main)
-
 
 # Description
 
