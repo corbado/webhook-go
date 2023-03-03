@@ -1,0 +1,8 @@
+{
+  "id": "who-1234567890",
+  "projectID": "pro-1234567890",
+  "action": "authMethods",
+  "data": {
+    "username": "testUsername"
+  }
+}
