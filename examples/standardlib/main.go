@@ -39,12 +39,24 @@ func main() {
 
 // authMethodsCallback is being executed for webhook action "authMethods".
 // !!! IMPLEMENT YOUR OWN LOGIC HERE !!!
-func authMethodsCallback(_ string) (authmethodsresponse.Status, error) {
-	return authmethodsresponse.StatusExists, nil
+func authMethodsCallback(username string) (authmethodsresponse.Status, error) {
+	// Example (for example do a database lookup and check if
+	// given username exists)
+	if username == "existing@existing.com" {
+		return authmethodsresponse.StatusExists, nil
+	}
+
+	return authmethodsresponse.StatusNotExists, nil
 }
 
 // passwordVerifyCallback is being executed for webhook action "passwordVerify".
 // !!! IMPLEMENT YOUR OWN LOGIC HERE !!!
-func passwordVerifyCallback(_ string, _ string) (bool, error) {
+func passwordVerifyCallback(username string, password string) (bool, error) {
+	// Example (for example do a database lookup and check if
+	// given username and password are correct)
+	if username == "existing@existing.com" && password == "supersecret" {
+		return true, nil
+	}
+
 	return false, nil
 }
