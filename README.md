@@ -1,3 +1,6 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/corbado/webhook-go.svg)](https://pkg.go.dev/github.com/corbado/webhook-go) ![example workflow](https://github.com/github/docs/actions/workflows/build.yml/badge.svg)
+
+
 # Description
 
 This Go webhooks library can be used in your backend to handle webhook calls from Corbado.
