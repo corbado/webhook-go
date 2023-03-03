@@ -1,4 +1,5 @@
-[![Go Reference](https://pkg.go.dev/badge/github.com/corbado/webhook-go.svg)](https://pkg.go.dev/github.com/corbado/webhook-go) ![example workflow](https://github.com/corbado/corbado-go/actions/workflows/main.yml/badge.svg)
+[![Go reference](https://pkg.go.dev/badge/github.com/corbado/webhook-go.svg)](https://pkg.go.dev/github.com/corbado/webhook-go) 
+[![Build status](https://github.com/corbado/webhook-go/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/corbado/webhook-go/actions/workflows/main.yml/badge.svg?branch=main)
 
 
 # Description
