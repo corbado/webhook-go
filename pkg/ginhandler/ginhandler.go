@@ -93,6 +93,12 @@ func (g *GinHandler) Handle(c *gin.Context) {
 		return
 	}
 
+	if len(body) == 0 {
+		c.String(http.StatusBadRequest, "Empty body, provide JSON request")
+
+		return
+	}
+
 	switch action {
 	case "authMethods":
 		g.handleAuthMethods(c, body)

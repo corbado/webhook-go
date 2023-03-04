@@ -88,7 +88,7 @@ func (s *StandardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	action := r.Header.Get("X-Corbado-Action")
 	if action == "" {
-		s.sendBadRequest(w, "X-Corbado-Action missing or empty")
+		s.sendBadRequest(w, "X-Corbado-Action header missing or empty")
 
 		return
 	}

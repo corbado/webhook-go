@@ -1,49 +1,62 @@
-package standardhandler_test
+package corbado_test
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	corbado "github.com/corbado/webhook-go"
 	"github.com/corbado/webhook-go/pkg/dto/authmethodsresponse"
 	"github.com/corbado/webhook-go/pkg/logger"
-	"github.com/corbado/webhook-go/pkg/standardhandler"
 )
 
 const username = "webhookUsername"
 const password = "webhookPassword"
 
-//nolint:funlen
-func TestImpl_ServeHTTP(t *testing.T) {
-	usernameHash := sha256.Sum256([]byte(username))
-	passwordHash := sha256.Sum256([]byte(password))
-
-	handler, err := standardhandler.New(
-		logger.NewNull(),
-		usernameHash,
-		passwordHash,
-		authMethodsCallback,
-		passwordVerifyCallback,
-	)
+func TestHandler(t *testing.T) {
+	webhook, err := corbado.
+		NewBuilder().
+		SetLogger(logger.NewNull()).
+		SetUsername(username).
+		SetPassword(password).
+		SetAuthMethodsCallback(authMethodsCallback).
+		SetPasswordVerifyCallback(passwordVerifyCallback).
+		Build()
 	require.NoError(t, err)
-	require.NotNil(t, handler)
+	require.NotNil(t, webhook)
+
+	standardHandler, err := webhook.GetStandardHandler()
+	require.NoError(t, err)
+	require.NotNil(t, standardHandler)
+
+	ginHandler, err := webhook.GetGinHandler()
+	require.NoError(t, err)
+	require.NotNil(t, ginHandler)
+
+	gin.SetMode(gin.ReleaseMode)
+
+	ginRouter := gin.New()
+	ginRouter.Use(gin.Recovery())
+	ginRouter.POST("/webhook", ginHandler.Handle)
 
 	tests := []struct {
-		name          string
-		createRequest func() (*http.Request, error)
-		assert        func(resp *http.Response)
+		name                string
+		createRequest       func() (*http.Request, error)
+		assert              func(resp *http.Response)
+		skipStandardHandler bool
+		skipGinHandler      bool
 	}{
 		{
 			name: "Missing authentication",
 			createRequest: func() (*http.Request, error) {
-				r, err := http.NewRequest("GET", "/", nil)
+				r, err := http.NewRequest("POST", "/webhook", nil)
 				if err != nil {
 					return nil, err
 				}
@@ -57,7 +70,7 @@ func TestImpl_ServeHTTP(t *testing.T) {
 		{
 			name: "Invalid authentication",
 			createRequest: func() (*http.Request, error) {
-				r, err := http.NewRequest("GET", "/", nil)
+				r, err := http.NewRequest("POST", "/webhook", nil)
 				if err != nil {
 					return nil, err
 				}
@@ -73,7 +86,7 @@ func TestImpl_ServeHTTP(t *testing.T) {
 		{
 			name: "Invalid method",
 			createRequest: func() (*http.Request, error) {
-				r, err := http.NewRequest("GET", "/", nil)
+				r, err := http.NewRequest("GET", "/webhook", nil)
 				if err != nil {
 					return nil, err
 				}
@@ -89,11 +102,12 @@ func TestImpl_ServeHTTP(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, "Invalid method 'GET', only POST is allowed", string(body))
 			},
+			skipGinHandler: true,
 		},
 		{
 			name: "Missing action",
 			createRequest: func() (*http.Request, error) {
-				r, err := http.NewRequest("POST", "/", nil)
+				r, err := http.NewRequest("POST", "/webhook", nil)
 				if err != nil {
 					return nil, err
 				}
@@ -107,7 +121,7 @@ func TestImpl_ServeHTTP(t *testing.T) {
 
 				body, err := io.ReadAll(resp.Body)
 				assert.NoError(t, err)
-				assert.Equal(t, "X-Corbado-Action missing or empty", string(body))
+				assert.Equal(t, "X-Corbado-Action header missing or empty", string(body))
 			},
 		},
 		{
@@ -118,7 +132,7 @@ func TestImpl_ServeHTTP(t *testing.T) {
 					return nil, err
 				}
 
-				r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+				r, err := http.NewRequest("POST", "/webhook", bytes.NewReader(body))
 				if err != nil {
 					return nil, err
 				}
@@ -144,7 +158,7 @@ func TestImpl_ServeHTTP(t *testing.T) {
 					return nil, err
 				}
 
-				r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+				r, err := http.NewRequest("POST", "/webhook", bytes.NewReader(body))
 				if err != nil {
 					return nil, err
 				}
@@ -162,7 +176,6 @@ func TestImpl_ServeHTTP(t *testing.T) {
 
 				expectedBody, err := os.ReadFile("testdata/authMethodsResponse.json")
 				assert.NoError(t, err)
-
 				assert.Equal(t, expectedBody, body)
 			},
 		},
@@ -174,7 +187,7 @@ func TestImpl_ServeHTTP(t *testing.T) {
 					return nil, err
 				}
 
-				r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+				r, err := http.NewRequest("POST", "/webhook", bytes.NewReader(body))
 				if err != nil {
 					return nil, err
 				}
@@ -192,7 +205,6 @@ func TestImpl_ServeHTTP(t *testing.T) {
 
 				expectedBody, err := os.ReadFile("testdata/passwordVerifyResponse.json")
 				assert.NoError(t, err)
-
 				assert.Equal(t, expectedBody, body)
 			},
 		},
@@ -200,16 +212,33 @@ func TestImpl_ServeHTTP(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r, err := test.createRequest()
-			assert.NoError(t, err)
-			assert.NotNil(t, r)
+			// Test standard handler
+			if !test.skipStandardHandler {
+				r, err := test.createRequest()
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
 
-			rr := httptest.NewRecorder()
-			handler.ServeHTTP(rr, r)
-			resp := rr.Result()
-			defer resp.Body.Close()
+				rr := httptest.NewRecorder()
+				standardHandler.ServeHTTP(rr, r)
+				resp := rr.Result()
 
-			test.assert(resp)
+				test.assert(resp)
+				assert.NoError(t, resp.Body.Close())
+			}
+
+			// Test Gin handler
+			if !test.skipGinHandler {
+				r, err := test.createRequest()
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				rr := httptest.NewRecorder()
+				ginRouter.ServeHTTP(rr, r)
+				resp := rr.Result()
+
+				test.assert(resp)
+				assert.NoError(t, resp.Body.Close())
+			}
 		})
 	}
 }
